@@ -4,7 +4,6 @@ import random
 import time
 import json
 import wget
-import numpy as np
 from astropy.time import Time
 
 import plotly.graph_objs as go
@@ -120,8 +119,6 @@ def make_scatter_plot(objectId):
 
 ################
 import sys
-import plotly.graph_objects as go
-import numpy as np
 import os
 
 
