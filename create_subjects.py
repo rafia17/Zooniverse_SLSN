@@ -93,7 +93,7 @@ def create_subjects_and_link_to_project(proto_subjects, project_id, subject_set_
     print("new subjects to add: {}".format(new_subjects))
 
     # add the new subject list (data and metadata) to the already defined project subject set
-    # subject_set.add(new_subjects)
+    subject_set.add(new_subjects)
 
     return
 
