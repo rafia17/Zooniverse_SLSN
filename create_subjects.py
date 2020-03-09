@@ -74,9 +74,16 @@ def create_subjects_and_link_to_project(proto_subjects, project_id, subject_set_
         project.reload()
     else:
         subject_set = SubjectSet().find(subject_set_id) # find the existing subject_set
-        subject_set_name = subject_set.display_name
+        existing_subject_set_name = subject_set.display_name # get its name
+
+        # if you have tried to set the subject set name, check that it matches the name for the chosen subject set id
+        if (subject_set_name!=None) and (existing_subject_set_name!=subject_set_name):
+            print("your chosen subject set name does not match the existing name: {}, {}".format(subject_set_name,existing_subject_set_name))
+            return -1
+        else:
+            subject_set_name=existing_subject_set_name
+
         print("add to existing subject set: {}".format(subject_set_name))
-        exit()
 
     # Create a list of the existing subject metadata
     meta_list=[]
@@ -141,8 +148,8 @@ project = Project.find(project_id)
 
 # retrieve the subject set id
 print(project.links.subject_sets)
-subject_set_id=project.links.subject_sets[-1].id # this is the first subject set (if there are multiple?)
-# subject_set_id = None # generate a new subject set
+# subject_set_id=project.links.subject_sets[-1].id # this is the first subject set (if there are multiple?)
+subject_set_id = None # generate a new subject set
 print("subject set id = {}".format(subject_set_id))
 
 # Add some new subjects to the list
@@ -158,4 +165,4 @@ proto_subjects=create_proto_subjects(subject_data_csv=subject_data_csv,file_head
 
 # print(proto_subjects)
 
-create_subjects_and_link_to_project(proto_subjects=proto_subjects, project_id=project_id, subject_set_id=subject_set_id)
+create_subjects_and_link_to_project(proto_subjects=proto_subjects, project_id=project_id, subject_set_id=subject_set_id,subject_set_name="test set")
