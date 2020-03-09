@@ -1,6 +1,20 @@
 from panoptes_client import Panoptes, Project, SubjectSet, Subject, User, ProjectPreferences
 import numpy as np
 import pandas as pd
+from datetime import datetime
+import string
+
+def generate_random_str(str_set=np.array(list(string.ascii_lowercase)),N=3):
+    '''
+    generate a random string of length N
+    return np.random.choice(alphabet, size=N)
+
+    Keyword Arguments:
+    str_set - list of strings to draw letters from
+    N - number of draws to make
+    '''
+
+    return np.random.choice(str_set, size=N)
 
 def create_proto_subjects(subject_data_csv,file_path,file_header="filename"):
     '''
@@ -34,8 +48,7 @@ def create_proto_subjects(subject_data_csv,file_path,file_header="filename"):
 
     return proto_subjects
 
-
-def create_subjects_and_link_to_project(proto_subjects, project_id, subject_set_id):
+def create_subjects_and_link_to_project(proto_subjects, project_id, subject_set_id, subject_set_name=None):
     ''' find the project and relevant subject set. Get the existing subject data and compare to the new proto_subjects.
     Upload any instances of nbew subjects to the project
 
@@ -52,11 +65,18 @@ def create_subjects_and_link_to_project(proto_subjects, project_id, subject_set_
     if subject_set_id == None:
         subject_set = SubjectSet() # create empty subject_set
         subject_set.links.project = project
-        subject_set.display_name = 'new subject set'
+
+        if subject_set_name==None: # if not defined generate a random subject set name to avoid error when a set already exists
+            subject_set_name = 'subject_set_{:02d}_{:02d}_{:04d}_{}'.format(date.day,date.month,date.year,''.join(generate_random_str()))
+        print("will create a subject set called: {}".format(subject_set_name))
+        subject_set.display_name = subject_set_name # set the name of the subject set
         subject_set.save()
         project.reload()
     else:
         subject_set = SubjectSet().find(subject_set_id) # find the existing subject_set
+        subject_set_name = subject_set.display_name
+        print("add to existing subject set: {}".format(subject_set_name))
+        exit()
 
     # Create a list of the existing subject metadata
     meta_list=[]
@@ -97,6 +117,9 @@ def create_subjects_and_link_to_project(proto_subjects, project_id, subject_set_
 
     return
 
+# set a date variable so that we can generate a random name for a subject set
+date = datetime.today()
+
 ################
 
 # Connect to zooniverse account, insert your username and password
@@ -119,6 +142,7 @@ project = Project.find(project_id)
 # retrieve the subject set id
 print(project.links.subject_sets)
 subject_set_id=project.links.subject_sets[-1].id # this is the first subject set (if there are multiple?)
+# subject_set_id = None # generate a new subject set
 print("subject set id = {}".format(subject_set_id))
 
 # Add some new subjects to the list
