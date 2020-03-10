@@ -14,9 +14,12 @@ pip install panstamps
 
 4. go to the directory where panstamps is installed and replace the file downloader.py with the version in repository
 
-5. Set up environment variable LASAIR_CONFIG_PATH to the directory that points to your config.ini file
-6. Make sure environment variables are set for PANOPTES_USERNAME and PANOPTES_PASSWORD
+5. Install Panoptes client:
+pip install panoptes-client
 
-7. Config.ini settings:
+6. Set up environment variable LASAIR_CONFIG_PATH to the directory that points to your config.ini file
+7. Make sure environment variables are set for PANOPTES_USERNAME and PANOPTES_PASSWORD
+
+8. Config.ini settings:
 RECORDS_LIMIT: 10 # sets the max limit of subjects pulled from LASAIR to 10. To pull everything, set this to None
 GROUP_ID: Automatically pulls subjects from where last left off. Change to a new GROUP_ID, if you want to pull from the beginning of the kafka queue
