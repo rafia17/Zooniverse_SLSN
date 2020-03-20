@@ -1,2 +1,5 @@
-# Zooniverse_SLSN
-Classify super luminous super novae based on their light curves
+# Zooniverse_SLSN - zoo-to-lasair-example branch
+
+```
+conda env create --file envname.yml
+```
