@@ -25,10 +25,11 @@ class CaesarConsumerConfig(object):
     raise NotImplementedError
 
 class CaesarConsumer(object):
-  def __init__(self, config, caesar_config_name, db_path):
+  def __init__(self, config, caesar_config_name, db_path, workflow_id):
     self.config=config # CaesarConsumer config object
     self.caesar_config_name = caesar_config_name # this could be read from a CaesarConsumer config
     self.db_path = db_path
+    self.workflow = Workflow.find(workflow_id)
     
     self.subjects = {}
     self.last_classification_id = 0
@@ -107,7 +108,8 @@ class CaesarConsumer(object):
     pass
 
   def send_panoptes(self, to_retire):
-    pass
+    retire = [PanoptesSubject().find(sid) for sid in to_retire]
+    self.workflow.retire_subjects(retire)
 
   def send_lasair(self, to_retire):
     pass
