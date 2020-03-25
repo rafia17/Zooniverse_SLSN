@@ -29,7 +29,8 @@ class CaesarConsumer(object):
     self.config=config # CaesarConsumer config object
     self.caesar_config_name = caesar_config_name # this could be read from a CaesarConsumer config
     self.db_path = db_path
-    self.workflow = Workflow.find(workflow_id)
+    self.workflow = workflow_id
+    #self.workflow = Workflow.find(workflow_id)
     
     self.subjects = {}
     self.last_classification_id = 0
@@ -101,7 +102,7 @@ class CaesarConsumer(object):
   def send(self, subject_batch):
     to_retire = self.retire(subject_batch)
     if to_retire != []:
-      self.send_panoptes(to_retire)
+      #self.send_panoptes(to_retire)
       self.send_lasair(to_retire)
 
   def retire(self, subject_batch):
@@ -114,5 +115,5 @@ class CaesarConsumer(object):
   def send_lasair(self, to_retire):
     pass
 
-consumer = CaesarConsumer(None, 'slsn_online', None)
+consumer = CaesarConsumer(None, 'slsn_online', None, None)
 consumer.consume()
