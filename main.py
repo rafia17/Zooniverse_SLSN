@@ -5,13 +5,14 @@ from configparser import ConfigParser
 from lasair_zooniverse import lasair_zooniverse_class
 from lasair_zooniverse import lasair_object
 import time
-
-
-################################                
+import numpy as np
+################################   
+             
 base_dir = os.getenv('LASAIR_CONFIG_PATH')
 
 config = ConfigParser()    
 config.read('%s\\config.ini' % (base_dir))
+
 
 while(1):
     lasair_zoo = lasair_zooniverse_class(config.get('APP', 'KAFKA_SERVER'), config.get('APP', 'ENDPOINT'))
@@ -22,7 +23,7 @@ while(1):
         objectIds = objectIds[:max_limit]
     proto_subjects = []
     for object_id in objectIds:
-        lasair_zoo.wget_object_data(object_id, config.get('APP','URL'))
+        lasair_zoo.wget_objectdata(object_id, config.get('APP','URL'))
         proto_subject = lasair_zoo.produce_proto_subject(object_id, config.get('APP','PLOT_DIR'))
         proto_subjects.append(proto_subject)
 

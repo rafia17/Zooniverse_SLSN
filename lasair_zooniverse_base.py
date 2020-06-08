@@ -7,12 +7,15 @@ class lasair_zooniverse_base_class(ABC):
     def query_lasair_topic(self): pass
 
     @abstractmethod
-    def wget_object_data(self): pass
+    def gather_metadata(self): pass
 
     @abstractmethod
     def parse_object_data(self): pass
     
     @abstractmethod
     def build_plots(self): pass
+
+    @abstractmethod
+    def create_subjects_and_link_to_project(self): pass
 
 
