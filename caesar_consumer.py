@@ -85,6 +85,7 @@ class CaesarConsumer(object):
     data = ce.Extractor.next()
     haveItems = False
     subject_batch = []
+
     for i, item in enumerate(data):
       haveItems = True
       print(item)
@@ -92,9 +93,21 @@ class CaesarConsumer(object):
 
       # Ensure that we skip over classifications that have already been processed
       # Assumes that ids are always increasing
-      if id <= self.last_classification_id:
-        print("already processed")
-        continue
+      # if id <= self.last_classification_id:
+      #   print("already processed")
+      #   continue
+
+      # Connect to the database and record the cl details
+      conn = sqlite3.connect(self.db_path)
+      c = conn.cursor()
+      c.execute("SELECT COUNT(1) FROM cl_db where id={}".format(id)) # Insert a row of data
+      cl_id_check=c.fetchone()[0]
+      print("cl_id_check = {}".format(cl_id_check))
+      conn.commit()
+
+      if cl_id_check!=0:
+          print("already processed")
+          continue
 
       subject_id = int(item['subject'])
       annotation = item['annotations']
@@ -235,8 +248,15 @@ class CaesarConsumer(object):
     else:
         c.execute("SELECT subject_id FROM sub_db WHERE subject_id IN {} AND N_cl >= {}".format(tuple(subject_batch),self.N_cl_limit))
 
+    # read the retire query
+    for row in c:
+        to_retire.append(row[0])
+
     # update retire flag for these subjects
-    c.execute("UPDATE sub_db SET retire = 1 WHERE subject_id IN {}".format(tuple(to_retire)))
+    if len(to_retire)==1:
+        c.execute("UPDATE sub_db SET retire = 1 WHERE subject_id={}".format(to_retire[0]))
+    else:
+        c.execute("UPDATE sub_db SET retire = 1 WHERE subject_id IN {}".format(tuple(to_retire)))
     conn.commit()
 
     conn.close()
@@ -278,7 +298,9 @@ class CaesarConsumer(object):
     return
 
 # db_path="example.db"
-db_path="live_test.db"
+# db_path="live_test.db"
+# db_path="live_test_18_07_2020.db"
+db_path="live_test_05_08_2020.db"
 consumer = CaesarConsumer(config=None, caesar_config_name='slsn_online', db_path=db_path, workflow_id=None, N_cl_limit=3)
 consumer.consume()
 
