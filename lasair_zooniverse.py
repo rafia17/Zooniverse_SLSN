@@ -5,9 +5,10 @@ import wget
 import lasair_consumer
 from lasair_consumer import msgConsumer
 from PIL import Image, ImageDraw
+import logging
+
 
 from lasair_zooniverse_base import lasair_zooniverse_base_class
-import logging
 
 # 3rd party imports
 import plotly.graph_objs as go
@@ -47,11 +48,13 @@ class  lasair_zooniverse_class(lasair_zooniverse_base_class):
     def __init__(self, kafka_server, ENDPOINT):
         self.kafka_server = kafka_server
         self.ENDPOINT = ENDPOINT
+        self.log = logging.getLogger("lasair-zooniverse-logger")
+
 
     def query_lasair_topic(self, group_id, topic):
+
         c = msgConsumer(self.kafka_server, group_id)
         c.subscribe(topic)
-        print('Topics are ', c.topics())
         start = time.time()
         objectIds = []
 
@@ -65,130 +68,155 @@ class  lasair_zooniverse_class(lasair_zooniverse_base_class):
                 objectIds.append(objectname)
         print('======= %.1f seconds =========' % ((time.time()-start)))
         print('poll done')
+
+        #remove duplicates from the list
+        objectIds = list(set(objectIds))
+
         return objectIds
 
     def wget_objectdata(self, objectId, url):
-        url = url % (objectId)
-        wget.download(url, objectId + '.json')
+        try:
+            url = url % (objectId)
+            wget.download(url, objectId + '.json')
+        except Exception:
+            self.log.exception("Error in wget for object: " + objectId)
+            
 
 
     def produce_proto_subject(self, unique_id, plot_dir):
         # produce plots and gather metadata for each subject to be created
         lasair_zobject = self.parse_object_data(unique_id)
-        light_curve, panstamps = self.build_plots(lasair_zobject, plot_dir)
-        metadata = {'objectId': lasair_zobject.objectId, 'ramean': lasair_zobject.ramean, 'decmean': lasair_zobject.decmean }
+        if(lasair_zobject != None):
+            try:
+                light_curve, panstamps = self.build_plots(lasair_zobject, plot_dir)
+                metadata = {'objectId': lasair_zobject.objectId, 'ramean': lasair_zobject.ramean, 'decmean': lasair_zobject.decmean }
 
-        proto_subject = {}
-        proto_subject['location_lc'] = light_curve
-        proto_subject['location_ps'] = panstamps
-        proto_subject['metadata'] = metadata
-        
-        return (proto_subject)
+                proto_subject = {}
+                proto_subject['location_lc'] = light_curve
+                proto_subject['location_ps'] = panstamps
+                proto_subject['metadata'] = metadata
+
+                return (proto_subject)
+            except Exception:
+                self.log.exception("Error in produce_proto_subject for object: " + unique_id)
+        return None
 
     def create_subjects_and_link_to_project(self, proto_subjects, project_id, workflow_id, subject_set_id):
 
-        USERNAME = os.getenv('PANOPTES_USERNAME') 
-        PASSWORD = os.getenv('PANOPTES_PASSWORD')  
-        Panoptes.connect(username=USERNAME, password=PASSWORD, endpoint=self.ENDPOINT)
         
-        project = Project.find(project_id)
-        workflow = Workflow().find(workflow_id)
-
-        if subject_set_id == None:
-            subject_set = SubjectSet()
-            ts = time.gmtime()
-            subject_set.display_name = time.strftime("%m-%d-%Y %H:%M:%S", ts) 
-            subject_set.links.project = project
+        try:
+            USERNAME = os.getenv('PANOPTES_USERNAME') 
+            PASSWORD = os.getenv('PANOPTES_PASSWORD')  
+            Panoptes.connect(username=USERNAME, password=PASSWORD, endpoint=self.ENDPOINT)
             
-            subject_set.save()
-        else:
-            subject_set = SubjectSet().find(subject_set_id)
-        subjects = []
-        for proto_subject in proto_subjects:
-            subject = Subject()
-            subject.links.project = project
-            subject.add_location(proto_subject['location_lc'])
-            subject.add_location(proto_subject['location_ps'])
-            subject.metadata.update(proto_subject['metadata'])
-            subject.save()
-            subjects.append(subject)
+            project = Project.find(project_id)
+            workflow = Workflow().find(workflow_id)
 
-        subject_set.add(subjects)
-        workflow.add_subject_sets(subject_set)
+            if subject_set_id == None:
+                subject_set = SubjectSet()
+                ts = time.gmtime()
+                subject_set.display_name = time.strftime("%m-%d-%Y %H:%M:%S", ts) 
+                subject_set.links.project = project
+                
+                subject_set.save()
+            else:
+                subject_set = SubjectSet().find(subject_set_id)
+            subjects = []
+            for proto_subject in proto_subjects:
+                subject = Subject()
+                subject.links.project = project
+                subject.add_location(proto_subject['location_lc'])
+                subject.add_location(proto_subject['location_ps'])
+                subject.metadata.update(proto_subject['metadata'])
+                subject.save()
+                subjects.append(subject)
+
+            subject_set.add(subjects)
+            workflow.add_subject_sets(subject_set)
+        except Exception:
+            self.log.exception("Error in create_subjects_and_link_to_project ")
         
-        return True
 
     def  parse_object_data(self, objectId):
-        f=open(objectId + '.json', "r")
-        data = json.load(f)
-        f.close()
+        try:
+            f=open(objectId + '.json', "r")
+            data = json.load(f)
+            f.close()
+        
 
-        lo = lasair_object(objectId, 0,0,0,0)
-   
-        for key, value in data.items(): 
-            if key == 'objectData':
-                objectData = value
-                for objData in objectData:
-                    for dkey, dvalue in objectData.items():
-                        if dkey == 'ramean':
-                            lo.ramean = dvalue
-                        elif dkey == 'decmean':
-                            lo.decmean = dvalue   
-            elif key == 'candidates':
-                candidates = value           
-                for candidate in candidates:
-                    mjd_dml = ''
-                    dml = ''
-                    dmlcolor = ''
-                    mag = ''
-                    flag = False
-                    for ckey, cvalue in candidate.items():
-                        if ckey == 'mjd':
-                            mjd = cvalue
-                        elif ckey == 'sigmapsf':
-                            error = cvalue
-                        elif ckey == 'fid':
-                            if cvalue == 1:
-                                fid = 'blue'
-                            if cvalue == 2:
-                                fid = 'red'
-                        elif ckey == "magpsf":
-                            if flag == False:
-                                mag = cvalue
-                        elif ckey == "diffmaglim":
-                            dml = cvalue
-                            mjd_dml = mjd
-                            mjd = ''
-                            error = ''
-                            mag = ''
-                            flag = True
-                            if fid == 'blue':
-                                dmlcolor = 'lightskyblue'
-                            elif fid == 'red':
-                                dmlcolor = 'lightpink'
-                            fid = ''
-                    lo.Detections.append({'mjd':mjd, 'mag':mag, 'fid':fid, 'mjd_dml':mjd_dml, 'dml':dml, 'dmlcolor': dmlcolor, 'error':error})  
-        return lo      
+            lo = lasair_object(objectId, 0,0,0,0)
+    
+            for key, value in data.items(): 
+                if key == 'objectData':
+                    objectData = value
+                    for objData in objectData:
+                        for dkey, dvalue in objectData.items():
+                            if dkey == 'ramean':
+                                lo.ramean = dvalue
+                            elif dkey == 'decmean':
+                                lo.decmean = dvalue   
+                elif key == 'candidates':
+                    candidates = value           
+                    for candidate in candidates:
+                        mjd_dml = ''
+                        dml = ''
+                        dmlcolor = ''
+                        mag = ''
+                        flag = False
+                        for ckey, cvalue in candidate.items():
+                            if ckey == 'mjd':
+                                mjd = cvalue
+                            elif ckey == 'sigmapsf':
+                                error = cvalue
+                            elif ckey == 'fid':
+                                if cvalue == 1:
+                                    fid = 'blue'
+                                if cvalue == 2:
+                                    fid = 'red'
+                            elif ckey == "magpsf":
+                                if flag == False:
+                                    mag = cvalue
+                            elif ckey == "diffmaglim":
+                                dml = cvalue
+                                mjd_dml = mjd
+                                mjd = ''
+                                error = ''
+                                mag = ''
+                                flag = True
+                                if fid == 'blue':
+                                    dmlcolor = 'lightskyblue'
+                                elif fid == 'red':
+                                    dmlcolor = 'lightpink'
+                                fid = ''
+                        lo.Detections.append({'mjd':mjd, 'mag':mag, 'fid':fid, 'mjd_dml':mjd_dml, 'dml':dml, 'dmlcolor': dmlcolor, 'error':error})  
+            return lo 
+        except Exception:
+            self.log.exception("Error in parse_object_data for object: " + objectId)
+            return None     
     
     def gather_metadata(self, ramean, decmean, dirpath):
-        logger = logging.getLogger("Panstamps")
-        fitsPaths, jpegPaths, colorPath = downloader(
-                log=logger,
-                settings=False,
-                fits=False,
-                jpeg=True,
-                arcsecSize=75,
-                filterSet='gri',
-                color=True,
-                singleFilters=True,
-                ra=ramean,
-                dec=decmean,
-                imageType="stack",
-                downloadDirectory=dirpath,
-                mjdStart=False,
-                mjdEnd=False,
-                window=False
-        ).get()
+        #logger = logging.getLogger("Panstamps")
+        try:
+            fitsPaths, jpegPaths, colorPath = downloader(
+                    log= self.log,
+                    settings=False,
+                    fits=False,
+                    jpeg=True,
+                    arcsecSize=75,
+                    filterSet='gri',
+                    color=True,
+                    singleFilters=True,
+                    ra=ramean,
+                    dec=decmean,
+                    imageType="stack",
+                    downloadDirectory=dirpath,
+                    mjdStart=False,
+                    mjdEnd=False,
+                    window=False
+            ).get()
+        except Exception:
+            self.log.exception("Error in getting Panstarrs image: ")
+            return None
 
         return colorPath    
     
@@ -238,8 +266,7 @@ class  lasair_zooniverse_class(lasair_zooniverse_base_class):
             os.makedirs(dirpath)
         figure=go.Figure(data=data,layout=layout)
         figure.write_image("%s\\light_curve.jpeg" % (dirpath), format='jpeg', width=800, height=600)
-        #figure.write_html("first_figure.html",  auto_open=True)
-
+       
         #now get the panstamps image
         colorPath = self.gather_metadata(lasair_object.ramean,lasair_object.decmean, dirpath)
 

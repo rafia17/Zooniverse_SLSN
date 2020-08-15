@@ -24,7 +24,8 @@ class msgConsumer():
     def poll(self):
         try:
             msg = self.streamReader.poll(timeout=30)
-            return msg.value()
+            if(msg != None):
+                return msg.value()
         except:
             return None
 
