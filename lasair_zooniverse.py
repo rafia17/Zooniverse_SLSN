@@ -3,15 +3,16 @@ import time
 import json
 import wget
 import lasair_consumer
+import logging
+import matplotlib
+
 from lasair_consumer import msgConsumer
 from PIL import Image, ImageDraw
-import logging
-
-
 from lasair_zooniverse_base import lasair_zooniverse_base_class
 
 # 3rd party imports
-import plotly.graph_objs as go
+import matplotlib.pyplot as plt
+import numpy as np
 from panoptes_client import Panoptes, Project, SubjectSet, Subject, Workflow
 from panstamps import __version__
 from panstamps import cl_utils
@@ -31,19 +32,18 @@ class lasair_object:
         self.lightcurve_plot = lightcurve_plot
         self.Detections = []
 
+    def __str__(self):
+      print (self.objectId, self.ramean, self.decmean)
+
 
 def get_objectId(msg):
-    msgString= msg.decode("utf-8")
-    step_0 = msgString.split(',')
-    for pair in step_0:
-        step_1 = pair.split(':')
-        if step_1[0][2:9] =='objectI':
-            objectname = step_1[1].replace('"', '')
-            objectname = objectname.replace(' ', '')
+    msgString = msg.decode("utf-8")
+    msgDict = json.loads(msgString)
+    objectname = msgDict['objectId']
     return objectname                
 
 
-class  lasair_zooniverse_class(lasair_zooniverse_base_class):
+class lasair_zooniverse_class(lasair_zooniverse_base_class):
 
     def __init__(self, kafka_server, ENDPOINT):
         self.kafka_server = kafka_server
@@ -74,21 +74,23 @@ class  lasair_zooniverse_class(lasair_zooniverse_base_class):
 
         return objectIds
 
-    def wget_objectdata(self, objectId, url):
+    def wget_objectdata(self, objectId, url, data_dir):
         try:
             url = url % (objectId)
-            wget.download(url, objectId + '.json')
+            dirpath = os.path.join(data_dir, time.strftime("%m-%d-%Y", time.gmtime()))
+            if not os.path.exists(dirpath):
+                os.makedirs(dirpath)
+            print(dirpath)
+            wget.download(url, os.path.join(dirpath, objectId + '.json'))
         except Exception:
             self.log.exception("Error in wget for object: " + objectId)
-            
 
-
-    def produce_proto_subject(self, unique_id, plot_dir):
+    def produce_proto_subject(self, unique_id, data_dir):
         # produce plots and gather metadata for each subject to be created
-        lasair_zobject = self.parse_object_data(unique_id)
+        lasair_zobject = self.parse_object_data(unique_id, data_dir)
         if(lasair_zobject != None):
             try:
-                light_curve, panstamps = self.build_plots(lasair_zobject, plot_dir)
+                light_curve, panstamps = self.build_plots(lasair_zobject, data_dir)
                 metadata = {'objectId': lasair_zobject.objectId, 'ramean': lasair_zobject.ramean, 'decmean': lasair_zobject.decmean }
 
                 proto_subject = {}
@@ -137,16 +139,15 @@ class  lasair_zooniverse_class(lasair_zooniverse_base_class):
             self.log.exception("Error in create_subjects_and_link_to_project ")
         
 
-    def  parse_object_data(self, objectId):
+    def parse_object_data(self, objectId, data_dir):
         try:
-            f=open(objectId + '.json', "r")
+            dirpath = os.path.join(data_dir, time.strftime("%m-%d-%Y", time.gmtime()))
+            f=open(os.path.join(dirpath, objectId + '.json'), "r")
             data = json.load(f)
             f.close()
-        
 
             lo = lasair_object(objectId, 0,0,0,0)
-    
-            for key, value in data.items(): 
+            for key, value in data.items():
                 if key == 'objectData':
                     objectData = value
                     for objData in objectData:
@@ -154,128 +155,141 @@ class  lasair_zooniverse_class(lasair_zooniverse_base_class):
                             if dkey == 'ramean':
                                 lo.ramean = dvalue
                             elif dkey == 'decmean':
-                                lo.decmean = dvalue   
+                                lo.decmean = dvalue
                 elif key == 'candidates':
-                    candidates = value           
+                    candidates = value
+                    print(len(candidates))
                     for candidate in candidates:
-                        mjd_dml = ''
-                        dml = ''
-                        dmlcolor = ''
-                        mag = ''
-                        flag = False
-                        for ckey, cvalue in candidate.items():
-                            if ckey == 'mjd':
-                                mjd = cvalue
-                            elif ckey == 'sigmapsf':
-                                error = cvalue
-                            elif ckey == 'fid':
-                                if cvalue == 1:
-                                    fid = 'blue'
-                                if cvalue == 2:
-                                    fid = 'red'
-                            elif ckey == "magpsf":
-                                if flag == False:
-                                    mag = cvalue
-                            elif ckey == "diffmaglim":
-                                dml = cvalue
-                                mjd_dml = mjd
-                                mjd = ''
-                                error = ''
-                                mag = ''
-                                flag = True
-                                if fid == 'blue':
-                                    dmlcolor = 'lightskyblue'
-                                elif fid == 'red':
-                                    dmlcolor = 'lightpink'
-                                fid = ''
-                        lo.Detections.append({'mjd':mjd, 'mag':mag, 'fid':fid, 'mjd_dml':mjd_dml, 'dml':dml, 'dmlcolor': dmlcolor, 'error':error})  
-            return lo 
-        except Exception:
-            self.log.exception("Error in parse_object_data for object: " + objectId)
-            return None     
+                        mjd = candidate['mjd']
+                        fid = candidate['fid']
+                        mag = candidate['magpsf']
+                        try:
+                          error = candidate['sigmapsf']
+                          flag = True
+                        except KeyError:
+                          mag = candidate['diffmaglim']
+                          flag = False
+                        lo.Detections.append({'mjd':mjd, 'mag':mag, 'fid':fid, 'error':error, 'detect_flag': flag})
+            return lo
+        except Exception as e:
+            print(repr(e))
+            return None
     
     def gather_metadata(self, ramean, decmean, dirpath):
         #logger = logging.getLogger("Panstamps")
-        try:
-            fitsPaths, jpegPaths, colorPath = downloader(
-                    log= self.log,
-                    settings=False,
-                    fits=False,
-                    jpeg=True,
-                    arcsecSize=75,
-                    filterSet='gri',
-                    color=True,
-                    singleFilters=True,
-                    ra=ramean,
-                    dec=decmean,
-                    imageType="stack",
-                    downloadDirectory=dirpath,
-                    mjdStart=False,
-                    mjdEnd=False,
-                    window=False
-            ).get()
-        except Exception:
-            self.log.exception("Error in getting Panstarrs image: ")
-            return None
+        fitsPaths, jpegPaths, colorPath = downloader(
+                log=logging.getLogger(__name__),
+                settings=False,
+                fits=False,
+                jpeg=True,
+                arcsecSize=75,
+                filterSet='gri',
+                color=True,
+                singleFilters=False,
+                ra=ramean,
+                dec=decmean,
+                imageType="stack",
+                downloadDirectory=dirpath,
+                mjdStart=False,
+                mjdEnd=False,
+                window=False
+        ).get()
 
-        return colorPath    
+        return colorPath
     
 
-    def build_plots(self, lasair_object, plot_dir):    
+    def build_plots(self, lasair_object, data_dir):
 
-        mjd = []
-        mag = []
-        fid = []
-        error = []
-        mjd_dml = []
-        dml = []
-        dmlcolor = []
+        mjd_red = []
+        mag_red = []
+        yerr_red = []
+        mjd_red_limit = []
+        mag_red_limit = []
+        mjd_blue = []
+        mag_blue = []
+        yerr_blue = []
+        mjd_blue_limit = []
+        mag_blue_limit = []
+    
+        mjd_first = np.inf
+        print(len(lasair_object.Detections))
+        for detection in lasair_object.Detections:
+          print(detection)
+      
+          if detection['detect_flag']  == True:
+            if detection['mjd'] < mjd_first:
+              mjd_first = detection['mjd']
+            if detection['fid'] == 2:
+              mjd_red.append(detection['mjd'])
+              mag_red.append(detection['mag'])
+              yerr_red.append(detection['error'])
+            elif detection['fid'] == 1:
+              mjd_blue.append(detection['mjd'])
+              mag_blue.append(detection['mag'])
+              yerr_blue.append(detection['error'])
+          elif detection['detect_flag'] == False:
+            if detection['fid'] == 2:
+              mjd_red_limit.append(detection['mjd'])
+              mag_red_limit.append(detection['mag'])
+            elif detection['fid'] == 1:
+              mjd_blue_limit.append(detection['mjd'])
+              mag_blue_limit.append(detection['mag'])
 
-        for i in range(len(lasair_object.Detections)):
-            for ckey, cvalue in lasair_object.Detections[i].items():
-                if ckey == 'mjd':
-                    if cvalue != '':
-                        mjd.append(cvalue)
-                elif ckey == 'error':
-                    if cvalue != '':
-                        error.append(cvalue)
-                elif ckey == 'fid':
-                    if cvalue != '':
-                        fid.append(cvalue)
-                elif ckey == "mag":
-                    if cvalue != '':
-                        mag.append(cvalue)
-                elif ckey == "mjd_dml":
-                    if cvalue != '':
-                        mjd_dml.append(cvalue)
-                elif ckey == "dml":
-                    if cvalue != '':
-                        dml.append(cvalue)
-                elif ckey == 'dmlcolor':
-                    if cvalue != '':
-                        dmlcolor.append(cvalue)        
+        dirpath = os.path.join(data_dir, time.strftime("%m-%d-%Y", time.gmtime()))
 
-        
-        trace1 = go.Scatter(x=mjd, y=mag, marker={'color': fid,  'size': 10}, error_y= { 'type': 'data', 'array': error, 'visible': True, 'thickness': 1}, mode="markers")
-        trace2 = go.Scatter(x=mjd_dml, y=dml, marker={'color': dmlcolor,  'size': 8}, mode="markers")
+        font = {'family' : 'normal',
+                'size'   : 22}
 
-        data=go.Data([trace1, trace2])
-        layout=go.Layout(xaxis={'title':'Modified Julian Date','tickformat': 'd'}, yaxis={'title':'Difference Magnitude', 'autorange': 'reversed'}, showlegend= False)
-        dirpath = os.path.join(plot_dir, time.strftime("%m-%d-%Y", time.gmtime()), lasair_object.objectId)
-        if not os.path.exists(dirpath):
-            os.makedirs(dirpath)
-        figure=go.Figure(data=data,layout=layout)
-        figure.write_image("%s\\light_curve.jpeg" % (dirpath), format='jpeg', width=800, height=600)
-       
+        matplotlib.rc('font', **font)
+
+        fig = plt.figure(figsize=(12,9))
+        ax = fig.add_subplot(111)
+
+        ax.errorbar(np.array(mjd_red) - mjd_first,
+                    mag_red,
+                    yerr=yerr_red,
+                    marker='o',
+                    markersize=10,
+                    color='#D1495B',
+                    ls='none')
+
+        ax.errorbar(np.array(mjd_blue) - mjd_first,
+                    mag_blue,
+                    yerr=yerr_blue,
+                    marker='D',
+                    markersize=10,
+                    color='#26547C',
+                    ls='none')
+
+        ax.scatter(np.array(mjd_red_limit) - mjd_first,
+                   mag_red_limit,
+                   marker='v',
+                   s=100,
+                   color='#DE7C89')
+
+        ax.scatter(np.array(mjd_blue_limit) - mjd_first,
+                   mag_blue_limit,
+                   marker='v',
+                   s=100,
+                   color='#4489C5')
+
+        ax.set_xlabel('Days since First Detection')
+        ax.set_ylabel('Difference Magnitude')
+
+        plt.grid()
+        plt.gca().invert_yaxis()
+        plt.savefig(os.path.join(dirpath, "%s_light_curve.jpeg"%(lasair_object.objectId)))
+
+
         #now get the panstamps image
         colorPath = self.gather_metadata(lasair_object.ramean,lasair_object.decmean, dirpath)
 
         #put crosshairs on the panstamps image
         self.draw_crosshairs(lasair_object.ramean,lasair_object.decmean, colorPath)
 
-        light_curve = os.path.join(dirpath, "light_curve.jpeg")
+        light_curve = os.path.join(dirpath, "%s_light_curve.jpeg"%(lasair_object.objectId))
         plots = dict({ 'light_curve': light_curve, 'panstamps': colorPath })
-        return light_curve, colorPath[0]  
+        return light_curve, colorPath[0]
     
     def draw_crosshairs(self, ramean, decmean, colorPath):
         im = Image.open(colorPath[0], mode='r')
@@ -311,10 +325,11 @@ class  lasair_zooniverse_class(lasair_zooniverse_base_class):
 
         # GENERATE THE DRAW OBJECT AND DRAW THE CROSSHAIRS
         draw = ImageDraw.Draw(im)
-        draw.line(l, fill=128, width=lineWidth)
+        draw.line(l, fill='#00ff00', width=lineWidth)
         for l in lines:
-            draw.line(l, fill=128, width=lineWidth)
+            draw.line(l, fill='#00ff00', width=lineWidth)
 
         del draw
 
+        im.thumbnail((300, 300), Image.ANTIALIAS)
         im.save(colorPath[0], "JPEG")

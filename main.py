@@ -9,9 +9,10 @@ import time
 import numpy as np
 ################################   
              
-base_dir = os.getenv('LASAIR_CONFIG_PATH')
+#base_dir = os.getenv('LASAIR_CONFIG_PATH')
+base_dir = '/Users/dwright/dev/Zooniverse_SLSN'
 config = ConfigParser()    
-config.read('%s\\config.ini' % (base_dir))
+config.read('%s/config.ini' % (base_dir))
 log = logging.getLogger("main-logger")
 
 while(1):
@@ -24,12 +25,12 @@ while(1):
             objectIds = objectIds[:max_limit]
         proto_subjects = []
         for object_id in objectIds:
-            lasair_zoo.wget_objectdata(object_id, config.get('APP','URL'))
-            proto_subject = lasair_zoo.produce_proto_subject(object_id, config.get('APP','PLOT_DIR'))
+            lasair_zoo.wget_objectdata(object_id, config.get('APP','URL'), config.get('APP','DATA_DIR'))
+            proto_subject = lasair_zoo.produce_proto_subject(object_id, config.get('APP','DATA_DIR'))
             if (proto_subject != None):
                 proto_subjects.append(proto_subject)
 
-        lasair_zoo.create_subjects_and_link_to_project(proto_subjects,config.get('APP','PROJECT_ID'), config.get('APP','WORKFLOW_ID'), None)
+        #lasair_zoo.create_subjects_and_link_to_project(proto_subjects,config.get('APP','PROJECT_ID'), config.get('APP','WORKFLOW_ID'), None)
         time.sleep(config.getint('APP','SLEEP_TIME')) #sleep for one day
     except Exception:
         log.exception("Error in main block")
