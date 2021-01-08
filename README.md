@@ -30,7 +30,7 @@ Take a look at config.ini. which contains important parameters for this example.
 
 The plots and PS1 image are required to produce *subjects* for upload to a specific Zooniverse workflow and project identified by ```WORKFLOW_ID``` and ```PROJECT_ID``` located at the Zooniverse endpoint (```ENDPOINT```).  ***Note: The example script will fail to upload to the Zooniverse project at this point unless you have the correct premissions for that project.***  To test the upload to Zooniverse [build a Zooniverse project of your own](https://help.zooniverse.org/getting-started/) and update the ```WORKFLOW_ID``` and ```PROJECT_ID``` in config.ini for your project.
 
-
+Example Subject data for ZTF20acufbmq
 <img src="https://github.com/rafia17/Zooniverse_SLSN/blob/master/ZTF20acufbmq_light_curve.jpeg" width="500"/>
 <img src="https://github.com/rafia17/Zooniverse_SLSN/blob/master/color__ra2.093337_dec33.089009_arcsec75_skycell2009.020.jpeg" width="200"/>
 
