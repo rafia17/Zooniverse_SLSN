@@ -36,6 +36,10 @@ The plots and PS1 image are required to produce *subjects* for upload to a speci
   <img src="https://github.com/rafia17/Zooniverse_SLSN/blob/master/color__ra2.093337_dec33.089009_arcsec75_skycell2009.020.jpeg" width="300"/>
 </p>
 
+## Customisation
+
+To customise integration between lasair and your own Zooniverse project create your own ```lasair_zooniverse_class``` take a look [here](https://github.com/rafia17/Zooniverse_SLSN/blob/a2236c5121bc699da97d9c55a3d746644a487bf1/lasair_zooniverse.py#L46) to see how this was implemented for the Superluminous Supernovae project.
+
 ## In development
 
 Realtime processing of volunteer classifications with Caesar
