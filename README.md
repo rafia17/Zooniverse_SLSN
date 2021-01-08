@@ -32,7 +32,7 @@ The plots and PS1 image are required to produce *subjects* for upload to a speci
 
 
 <img src="https://github.com/rafia17/Zooniverse_SLSN/blob/master/ZTF20acufbmq_light_curve.jpeg" width="500"/>
-<img src="https://github.com/rafia17/Zooniverse_SLSN/blob/master/color__ra2.093337_dec33.089009_arcsec75_skycell2009.020.jpeg" width="500"/>
+<img src="https://github.com/rafia17/Zooniverse_SLSN/blob/master/color__ra2.093337_dec33.089009_arcsec75_skycell2009.020.jpeg" width="200"/>
 
 ## In development
 
