@@ -1,5 +1,5 @@
-=======
-# Zooniverse_SLSN
+# Lasair-Zooniverse Integration
+
 Classify super luminous super novae based on their light curves
 
 Setting up the environment:
