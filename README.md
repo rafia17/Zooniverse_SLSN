@@ -26,9 +26,11 @@ To run the example do
 $ python run.py
 ```
 
-# In development
+Take a look at config.ini. which contains important parameters for this example.  The example script queries the lasair kafka stream at ```KAFKA_SERVER``` 
 
-## Realtime processing of volunteer classifications with Caesar
+## In development
+
+Realtime processing of volunteer classifications with Caesar
 
 ### Installation
 
@@ -47,10 +49,6 @@ pip install -e .
 
 Next setup caesar_external following these steps relating to ```caesar config new```:
 https://zooniverse.github.io/swap/setup.html#caesar-config-command-reference
-
-I have shared the arguments to pass on slack.  At the moment you don't need to do any of the other steps on that webpage.
-
-Once complete you should be able to run
 
 ```
 python caesar_consumer.py
