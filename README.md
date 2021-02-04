@@ -66,4 +66,4 @@ https://zooniverse.github.io/swap/setup.html#caesar-config-command-reference
 python caesar_consumer.py
 ```
 
-We note that posting directly to lasair has been disabled in caesar_consumer.py. If you would like to post your results back to the Lasair database, please get in touch with the Lasair team (asair-help@lists.roe.ac.uk. ) to discuss this possbibility. If the teamn you will receieve the custom urls/api requests that need to be included in the send_lasair function at Line 295 of caesar_consumer.py 
+We note that posting directly to lasair has been disabled in caesar_consumer.py. If you would like to post your results back to the Lasair database, please get in touch with the Lasair team (asair-help@lists.roe.ac.uk. ) to discuss this possibility. If the team agrees, you will receive the custom urls/api requests that need to be included in the send_lasair function at Line 295 of caesar_consumer.py 
