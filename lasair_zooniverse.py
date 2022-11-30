@@ -43,6 +43,16 @@ def get_objectId(msg):
     return objectname                
 
 
+def handle_object(objectId, L):
+    # from the objectId, we can get all the info that Lasair has
+    objectInfo = L.objects([objectId])[0]
+    if not objectInfo:
+        return None
+
+    #print(json.dumps(objectInfo['image_urls'], indent=2))
+    return objectInfo
+
+
 class lasair_zooniverse_class(lasair_zooniverse_base_class):
 
     def __init__(self, kafka_server, ENDPOINT):
@@ -84,6 +94,23 @@ class lasair_zooniverse_class(lasair_zooniverse_base_class):
             wget.download(url, os.path.join(dirpath, objectId + '.json'))
         except Exception:
             self.log.exception("Error in wget for object: " + objectId)
+
+    # 2022-11-29 KWS Added API equivalent of wget_objectdata above
+    def get_objectdata_via_api(self, objectId, data_dir, L):
+        # Initially let's do this as before and write the JSON to disk.
+        try:
+            dirpath = os.path.join(data_dir, time.strftime("%m-%d-%Y", time.gmtime()))
+            if not os.path.exists(dirpath):
+                os.makedirs(dirpath)
+            print(dirpath)
+            obj = handle_object(objectId, L)
+            with open(dirpath + '/' + objectId + '.json', 'w') as fp:
+                json.dump(obj, fp)
+
+        except Exception as e:
+            self.log.exception("Error in API get for object: " + objectId)
+
+
 
     def produce_proto_subject(self, unique_id, data_dir):
         # produce plots and gather metadata for each subject to be created

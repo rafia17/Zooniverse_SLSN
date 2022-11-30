@@ -7,6 +7,7 @@ from lasair_zooniverse import lasair_zooniverse_class
 from lasair_zooniverse import lasair_object
 import time
 import numpy as np
+from lasair import LasairError, lasair_client as lasair
 ################################   
 
 def main():
@@ -14,6 +15,7 @@ def main():
   config = ConfigParser()
   config.read('./config.ini')
   log = logging.getLogger("main-logger")
+  L = lasair(config.get('APP','LASAIR_TOKEN'), endpoint = 'https://lasair-ztf.lsst.ac.uk/api', timeout = 2.0)
 
   # Instantiate lasair-Zooniverse interface class
   lasair_zoo = lasair_zooniverse_class(config.get('APP', 'KAFKA_SERVER'),
@@ -36,9 +38,10 @@ def main():
   # Iterate through the objects queried from lasair
   for object_id in objectIds:
     # Grab the lightcurve data for each subject from lasair
-    lasair_zoo.wget_objectdata(object_id,
-                               config.get('APP','URL'),
-                               config.get('APP','DATA_DIR'))
+#    lasair_zoo.wget_objectdata(object_id,
+#                               config.get('APP','URL'),
+#                               config.get('APP','DATA_DIR'))
+    lasair_zoo.get_objectdata_via_api(object_id, config.get('APP','DATA_DIR'), L)
   
     # Create a proto-subject for this objects.  A proto-subject gathers the
     # information required to construct a subject for the Zooniverse.  In this

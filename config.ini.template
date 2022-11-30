@@ -1,0 +1,11 @@
+[APP]
+KAFKA_SERVER: <the kafka server and port - e.g. kafka.lsst.ac.uk:9092>
+TOPIC: <kafka topic - e.g. lasair_6ZooniverseTestSN-likecandidatesinlast14days>
+GROUP_ID: <kafka group id - e.g. TEST>
+PROJECT_ID: <the project id - e.g. 10996>
+WORKFLOW_ID:  <the workflow id - e.g. 13193>
+DATA_DIR: <the data directory - e.g. ./data>
+URL: <the JSON object URL - now defunct - e.g. https://lasair-ztf.lsst.ac.uk/object/%%s/json/>
+ENDPOINT: <the Panoptes URL - e.g. https://panoptes.zooniverse.org>
+RECORDS_LIMIT: <the records limit - e.g. 20>
+LASAIR_TOKEN: <your Lasair API token - e.g. b82393ea82358a892a490690394cd982905abbbc>
