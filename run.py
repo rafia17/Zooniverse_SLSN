@@ -1,6 +1,31 @@
-################
+#!/usr/bin/env python
+"""Get Superluminous Supernova candidate lightcurves from the Lasair broker and upload to Zooniverse, along with Pan-STARRS stamps.
+
+Usage:
+  %s [--configfile=<configfile>] [--test]
+  %s (-h | --help)
+  %s --version
+
+Options:
+  -h --help                   Show this screen.
+  --version                   Show version.
+  --configfile=<configfile>   Specify the config file [default: ./config.ini].
+  --test                      Run in test mode, which appends a random UUID to the Kafka topic (always unique).
+
+E.g.:
+
+  %s
+  %s --configfile=/tmp/config.ini
+  %s --configfile=/tmp/config.ini --test
+"""
+
 import sys
 import os
+__doc__ = __doc__ % (sys.argv[0], sys.argv[0], sys.argv[0], sys.argv[0], sys.argv[0], sys.argv[0])
+from docopt import docopt
+from gkutils.commonutils import Struct, cleanOptions
+################
+import sys
 import logging
 from configparser import ConfigParser
 from lasair_zooniverse import lasair_zooniverse_class
@@ -8,12 +33,17 @@ from lasair_zooniverse import lasair_object
 import time
 import numpy as np
 from lasair import LasairError, lasair_client as lasair
+import uuid
 ################################   
 
 def main():
+  opts = docopt(__doc__, version='0.1')
+  opts = cleanOptions(opts)
+  options = Struct(**opts)
+
   # Read config file
   config = ConfigParser()
-  config.read('./config.ini')
+  config.read(options.configfile)
   log = logging.getLogger("main-logger")
   L = lasair(config.get('APP','LASAIR_TOKEN'), endpoint = 'https://lasair-ztf.lsst.ac.uk/api', timeout = 2.0)
 
@@ -23,8 +53,11 @@ def main():
 
   # Query lasair kafka stream for objects according to group id and the
   # topic (aka. Stream name at https://lasair.roe.ac.uk/streams/)
-  objectIds = lasair_zoo.query_lasair_topic(config.get('APP','GROUP_ID'),
-                                            config.get('APP','TOPIC'))
+  groupId = config.get('APP','GROUP_ID')
+  if options.test:
+    # Add a random UUID to the group ID so the Kafka queue starts from scratch. (Should always be unique.)
+    groupId = groupId + '_' + str(uuid.uuid4())
+  objectIds = lasair_zoo.query_lasair_topic(groupId, config.get('APP','TOPIC'))
 
   # If a limit on the number of objects to process is set, truncate the object
   # list accordingly
