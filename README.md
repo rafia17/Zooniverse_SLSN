@@ -9,9 +9,9 @@ Clone this repo
 $ git clone https://github.com/rafia17/Zooniverse_SLSN.git
 ```
 
-install dependencies
+Change directory into Zooniverse_SLSN and install dependencies
 ```
-$ pip install wget confluent-kafka matplotlib panoptes_client
+$ pip install -r requirements.txt
 ```
 
 install [panstamps](https://github.com/thespacedoctor/panstamps) which is required by the Superluminous Supernova project example
